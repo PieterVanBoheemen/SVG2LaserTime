@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+<title>jQuery SVG Parse Script</title>
+<link rel="stylesheet" href="jquery.svg.css">
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+<script>
+$(document).ready(function() {
+  $( "#read" ).click(function( event ) {
+    var svgObject = document.getElementById("mysvg");
+    if (svgObject.contentDocument) { // DOM
+		var doc = svgObject.contentDocument;
+	}
+	else if (svgObject.contentWindow) { // IE win
+		var doc = svgObject.contentWindow.document;
+	}
+	else {
+		alert('not a compatible browser');
+	}
+    var totallengths = [0,0,0,0];  // cut, light, medium, heavy
+    var totalarea = [0,0,0]; // light, medium, heavy
+	
+    // PATHS
+    var paths = doc.getElementsByTagName("path");
+    for (var i = 0; i < paths.length; i++) {
+        totallengths = parseStroke(paths[i].getAttribute('style'),paths[i].getTotalLength(),totallengths);
+        totalarea = parseArea(paths[i].getAttribute('style'),paths[i],totalarea,1);
+    }
+    
+    // RECTANGLES
+    var rectangles = doc.getElementsByTagName("rect");
+    for (var j = 0; j <rectangles.length; j++) {
+        totallengths = parseStroke(rectangles[j].getAttribute('style'),(2 * rectangles[j].getAttribute("width")) + (2 * rectangles[j].getAttribute("height")),totallengths);
+        totalarea = parseArea(rectangles[j].getAttribute('style'),(rectangles[j].getAttribute("width")*rectangles[j].getAttribute("height")),totalarea,0);
+    }
+                
+    // ELLIPSES
+    var ellipses = doc.getElementsByTagName("ellipse");
+    var pi = 3.14;
+    for (var k = 0; k < ellipses.length; k++) {
+      var perimeter = 0;
+      var area = 0;
+      if(ellipses[k].getAttribute("rx") > ellipses[k].getAttribute("ry")) {
+        perimeter += (2 * pi * ellipses[k].getAttribute("rx"));
+        area += (pi + (ellipses[k].getAttribute("rx") * ellipses[k].getAttribute("rx")));
+      }
+      else {
+        perimeter += (2 * pi * ellipses[k].getAttribute("ry"));
+        area += (pi + (ellipses[k].getAttribute("rx") * ellipses[k].getAttribute("rx")));
+      }
+      totallengths = parseStroke(ellipses[k].getAttribute("style"),perimeter,totallengths);
+      totalarea = parseArea(ellipses[k].getAttribute('style'),area,totalarea,0);
+    }
+            
+    // OUTPUT
+    alert("Total cut length: " + totallengths[0] + " pixels\nTotal light engraving: " + totallengths[1] + " pixels\nTotal medium engraving: " + totallengths[2] + " pixels\nTotal heavy engraving: " + totallengths[3] + " pixels\nTotal light engraving area: " + totalarea[0] + " pixels\nTotal medium engraving area: " + totalarea[1] + " pixels\nTotal heavy engraving area: " + totalarea[2] + " pixels");
+  });
+});
+
+function parseArea(a, b, c, d) {
+    var res = a.split(";");
+    for (var x = 0; x < res.length; x++){
+        var res2 = res[x].split(":");
+        if (res2[0].trim() == "fill") {
+          if (res2[1].trim() == "#e9e9e9") { // light
+            if( d == 1) {
+              c[0] += polyArea(pathToPolygonViaSubdivision(b,10,3));
+            }
+            else {
+              c[0] += b;
+            }
+          }
+          if (res2[1].trim() == "#808080") { // medium
+            if( d == 1) {
+              c[1] += polyArea(pathToPolygonViaSubdivision(b,10,3));
+            }
+            else {
+              c[1] += b;
+            }
+          }
+          if (res2[1].trim() == "#000000") { // heavy
+            if( d == 1) {
+              c[2] += polyArea(pathToPolygonViaSubdivision(b,10,3));
+            }
+            else {
+              c[2] += b;
+            }
+          }
+        }
+    }
+    return c;
+}
+
+function parseStroke(a, b, c) {
+	var colorCheck = false;
+	var lengthIndex = 0;
+	var widthCheck = false;
+    var res = a.split(";");
+	
+    for (var x = 0; x < res.length; x++){
+        var res2 = res[x].split(":");
+		
+        if (res2[0].trim() == "stroke") { 
+            if (res2[1].trim() == "#0000ff") { // cut
+				colorCheck = true;
+				lengthIndex = 0;
+            } 
+            if (res2[1].trim() == "#ff00ff") { // light
+				colorCheck = true;
+				lengthIndex = 1;
+            }
+            if (res2[1].trim() == "#00ff00") { // medium
+				colorCheck = true;
+				lengthIndex = 2;
+            }
+            if (res2[1].trim() == "#ff0000") { // heavy
+				colorCheck = true;
+				lengthIndex = 3;
+            }
+        }
+        if(res2[0].trim() == "stroke-width") {
+            if(res2[1].trim() == "0.02834646" || res2[1].trim() == "0.0283465") { // IE rounds to 7 decimals
+                widthCheck = true;
+            }
+        }
+    }
+	if(colorCheck && widthCheck) {
+		c[lengthIndex] += b;
+	}
+    return c;
+}
+
+// path:      an SVG <path> element
+// threshold: a 'close-enough' limit (ignore subdivisions with area less than this)
+// segments:  (optional) how many segments to subdivisions to create at each level
+// returns:   a new SVG <polygon> element
+function pathToPolygonViaSubdivision(path,threshold,segments){
+    if (!threshold) threshold = 0.0001; // Get really, really close
+    if (!segments)  segments = 3;       // 2 segments creates 0-area triangles
+    
+    var points = subdivide( ptWithLength(0), ptWithLength( path.getTotalLength() ) );
+    for (var i=points.length;i--;) points[i] = [points[i].x,points[i].y];
+    
+    var doc  = path.ownerDocument;
+    var poly = doc.createElementNS('http://www.w3.org/2000/svg','polygon');
+    poly.setAttribute('points',points.join(' '));
+    return poly;
+    
+    // Record the distance along the path with the point for later reference
+    function ptWithLength(d) {
+        var pt = path.getPointAtLength(d); pt.d = d; return pt;
+    }
+    
+    // Create segments evenly spaced between two points on the path.
+    // If the area of the result is less than the threshold return the endpoints.
+    // Otherwise, keep the intermediary points and subdivide each consecutive pair.
+    function subdivide(p1,p2){
+        var pts=[p1];
+        for (var i=1,step=(p2.d-p1.d)/segments;i<segments;i++){
+            pts[i] = ptWithLength(p1.d + step*i);
+        }
+        pts.push(p2);
+        if (polyArea(pts)<=threshold) return [p1,p2];
+        else {
+            var result = [];
+            for (var i=1;i<pts.length;++i){
+                var mids = subdivide(pts[i-1], pts[i]);
+                mids.pop(); // We'll get the last point as the start of the next pair
+                result = result.concat(mids)
+            }
+            result.push(p2);
+            return result;
+        }
+    }
+    
+    // Calculate the area of an polygon represented by an array of points
+    function polyArea(points){
+        var p1,p2;
+        for(var area=0,len=points.length,i=0;i<len;++i){
+            p1 = points[i];
+            p2 = points[(i-1+len)%len]; // Previous point, with wraparound
+            area += (p2.x+p1.x) * (p2.y-p1.y);
+        }
+        return Math.abs(area/2);
+    }
+}
+
+// Return the area for an SVG <polygon> or <polyline>
+// Self-crossing polys reduce the effective 'area'
+function polyArea(poly){
+    var area=0,pts=poly.points,len=pts.numberOfItems;
+    for(var i=0;i<len;++i){
+        var p1 = pts.getItem(i), p2=pts.getItem((i+-1+len)%len);
+        area += (p2.x+p1.x) * (p2.y-p1.y);
+    }
+    return Math.abs(area/2);
+}
+
+</script>
+</head>
+<body>
+<h1>SVG Parse Script</h1>
+
+<button id="read">Read Total Pixels</button>
+
+<object id="mysvg" data="p1_inkscape.svg" type="image/svg+xml"></object>
+
+</body>
+</html>

@@ -2,6 +2,7 @@
 Javascript SVG to laser time converter
 
 ## Intro
+
 A script assembled out of multiple StackOverflow answers on how to parse a SVG file into an estimation of laser time.
 
 ## To Do
@@ -12,11 +13,12 @@ A script assembled out of multiple StackOverflow answers on how to parse a SVG f
 
 * Open SVG file
 * Calculate Path lengths
-* Calculate Path (polygone and ) area
+* Calculate Path (polygone and bezier) areas
 * Calculate Rectangles lengths
 * Calculate Rectangles areas
 * Calculate Ellipses perimeters (based on largest radius)
 * Calculate Ellipses areas (based on largest radius)
+* Discriminate between cutting and engraving (light, medium, heavy)
 
 ## Tests
 
