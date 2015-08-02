@@ -1,8 +1,34 @@
+<!--
+ /*
+    Title: SVG2MachineTime
+    Author: Pieter van Boheemen
+    Contact: pietervanboheemen@gmail.com
+ 
+	This file is part of my personal repository, please take note of
+    the following GNU Gneral Public License and respect it:
+ 
+	SVG2MachineTime is free software: you can
+	redistribute it and/or modify it under the terms of the GNU
+	General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option)
+	any later version.
+ 
+	SVG2MachineTime is distributed in the hope
+	that it will be useful, but WITHOUT ANY WARRANTY; without even
+	the implied warranty of MERCHANTABILITY or FITNESS FOR A
+	PARTICULAR PURPOSE.  See the GNU General Public License for more
+	details.
+ 
+	You should have received a copy of the GNU General Public License
+	along with SVG2MachineTime. If not, see
+	<http://www.gnu.org/licenses/>.
+ */
+ /-->
 <!DOCTYPE html>
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
-<title>jQuery SVG Parse Script</title>
+<title>SVG2MachineTime</title>
 <link rel="stylesheet" href="jquery.svg.css">
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
 <script>
@@ -52,9 +78,20 @@ $(document).ready(function() {
       totallengths = parseStroke(ellipses[k].getAttribute("style"),perimeter,totallengths);
       totalarea = parseArea(ellipses[k].getAttribute('style'),area,totalarea,0);
     }
-            
+                     
+    // CONVERT TO MACHINE TIME
+    var totalmachinetime = 0;
+    totalmachinetime += totallengths[0] * 0.01; // Seconds per pixel cutting
+    totalmachinetime += totallengths[1] * 0.001; // Seconds per pixel light engraving
+    totalmachinetime += totallengths[2] * 0.002; // Seconds per pixel medium engraving
+    totalmachinetime += totallengths[3] * 0.004; // Seconds per pixel heavy engraving
+    totalmachinetime += totalarea[0] * 0.001; // Seconds per pixel light area engraving
+    totalmachinetime += totalarea[1] * 0.002; // Seconds per pixel medium area engraving
+    totalmachinetime += totalarea[2] * 0.004; // Seconds per pixel heavy area engraving
+
     // OUTPUT
     alert("Total cut length: " + totallengths[0] + " pixels\nTotal light engraving: " + totallengths[1] + " pixels\nTotal medium engraving: " + totallengths[2] + " pixels\nTotal heavy engraving: " + totallengths[3] + " pixels\nTotal light engraving area: " + totalarea[0] + " pixels\nTotal medium engraving area: " + totalarea[1] + " pixels\nTotal heavy engraving area: " + totalarea[2] + " pixels");
+    alert("Total machine time: " + totalmachinetime + " seconds");
   });
 });
 
@@ -131,6 +168,10 @@ function parseStroke(a, b, c) {
     return c;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Source: http://stackoverflow.com/questions/10039679/how-can-i-calculate-the-area-of-a-bezier-curve
+// License: CC-BY-SA 3.0 by Phrogz
+
 // path:      an SVG <path> element
 // threshold: a 'close-enough' limit (ignore subdivisions with area less than this)
 // segments:  (optional) how many segments to subdivisions to create at each level
@@ -196,11 +237,12 @@ function polyArea(poly){
     }
     return Math.abs(area/2);
 }
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 </script>
 </head>
 <body>
-<h1>SVG Parse Script</h1>
+<h1>SVG2MachineTime</h1>
 
 <button id="read">Read Total Pixels</button>
 
